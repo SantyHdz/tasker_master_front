@@ -1,19 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getTasks, completeTask } from "@/services/api";
+import { getTasks, toggleTask, deleteTask, Task } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import CreateTask from "@/components/CreateTask";
 import Link from "next/link";
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  due_date?: string;
-  priority_id?: number;
-  completed?: boolean;
-}
 
 const PRIORITY_MAP: Record<number, { label: string; className: string; color: string }> = {
   1: { label: "Baja", className: "badge-muted", color: "var(--text-muted)" },
@@ -25,21 +16,24 @@ function formatDate(date: string) {
   const d = new Date(date);
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
-  const isTomorrow = d.toDateString() === new Date(now.getTime() + 86400000).toDateString();
-
-  if (isToday) return `Hoy, ${d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
-  if (isTomorrow) return `Mañana, ${d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
-  return d.toLocaleDateString("es-CO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const isTomorrow =
+    d.toDateString() === new Date(now.getTime() + 86400000).toDateString();
+  if (isToday)
+    return `Hoy, ${d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
+  if (isTomorrow)
+    return `Mañana, ${d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
+  return d.toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function getRelativeTimeClass(date: string) {
-  const d = new Date(date);
-  const now = new Date();
-  const diff = d.getTime() - now.getTime();
-  const hoursLeft = diff / (1000 * 60 * 60);
-
-  if (hoursLeft < 0) return "var(--danger)";
-  if (hoursLeft < 24) return "var(--warning)";
+function getDateColor(date: string) {
+  const diff = new Date(date).getTime() - Date.now();
+  if (diff < 0) return "var(--danger)";
+  if (diff < 86400000) return "var(--warning)";
   return "var(--text-muted)";
 }
 
@@ -70,13 +64,26 @@ export default function Dashboard() {
     fetchTasks();
   }, [fetchTasks]);
 
-  const handleComplete = async (id: string) => {
+  const handleToggle = async (id: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    await completeTask(token, id);
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+    try {
+      const updated = await toggleTask(token, id);
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    } catch {
+      setError("No se pudo actualizar la tarea.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      await deleteTask(token, id);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch {
+      setError("No se pudo eliminar la tarea.");
+    }
   };
 
   const handleLogout = () => {
@@ -85,18 +92,17 @@ export default function Dashboard() {
     window.location.href = "/login";
   };
 
-  const pending = tasks.filter((t) => !t.completed);
-  const completed = tasks.filter((t) => t.completed);
-
-  const filteredTasks = filter === "pending" ? pending : filter === "completed" ? completed : tasks;
+  const pending = tasks.filter((t) => !t.is_completed);
+  const completed = tasks.filter((t) => t.is_completed);
+  const filteredTasks =
+    filter === "pending" ? pending : filter === "completed" ? completed : tasks;
 
   return (
     <div className="relative min-h-screen">
-      {/* Background */}
       <div className="bg-grid" />
       <div className="bg-gradient-orb top" />
 
-      {/* Top bar */}
+      {/* Header */}
       <header
         className="sticky top-0 z-50"
         style={{
@@ -107,8 +113,10 @@ export default function Dashboard() {
       >
         <div style={{ maxWidth: "900px", margin: "0 auto", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {/* Logo */}
-            <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", color: "inherit" }}>
+            <Link
+              href="/dashboard"
+              style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", color: "inherit" }}
+            >
               <div
                 style={{
                   width: "32px",
@@ -122,17 +130,17 @@ export default function Dashboard() {
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="5" width="18" height="3" rx="1.5" fill="#0a0a0c"/>
-                  <rect x="3" y="10" width="13" height="3" rx="1.5" fill="#0a0a0c"/>
-                  <rect x="3" y="15" width="15" height="3" rx="1.5" fill="#0a0a0c"/>
+                  <rect x="3" y="5" width="18" height="3" rx="1.5" fill="#0a0a0c" />
+                  <rect x="3" y="10" width="13" height="3" rx="1.5" fill="#0a0a0c" />
+                  <rect x="3" y="15" width="15" height="3" rx="1.5" fill="#0a0a0c" />
                 </svg>
               </div>
-              <span style={{ fontWeight: 600, fontSize: "16px", letterSpacing: "-0.02em" }}>Tasker Master</span>
+              <span style={{ fontWeight: 600, fontSize: "16px", letterSpacing: "-0.02em" }}>
+                Tasker Master
+              </span>
             </Link>
 
-            {/* Right side */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              {/* Stats */}
               <div
                 className="flex items-center gap-3"
                 style={{
@@ -143,23 +151,20 @@ export default function Dashboard() {
                 }}
               >
                 <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                  <strong style={{ color: "var(--accent)" }}>{pending.length}</strong> pendiente{pending.length !== 1 ? "s" : ""}
+                  <strong style={{ color: "var(--accent)" }}>{pending.length}</strong>{" "}
+                  pendiente{pending.length !== 1 ? "s" : ""}
                 </span>
                 <span style={{ width: "1px", height: "14px", background: "var(--border)" }} />
                 <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                  <strong style={{ color: "var(--success)" }}>{completed.length}</strong> completada{completed.length !== 1 ? "s" : ""}
+                  <strong style={{ color: "var(--success)" }}>{completed.length}</strong>{" "}
+                  completada{completed.length !== 1 ? "s" : ""}
                 </span>
               </div>
 
-              {/* User menu */}
               <button
                 className="btn-ghost"
                 onClick={handleLogout}
-                style={{
-                  padding: "8px 14px",
-                  fontSize: "13px",
-                  border: "1px solid var(--border)",
-                }}
+                style={{ padding: "8px 14px", fontSize: "13px", border: "1px solid var(--border)" }}
               >
                 Salir
               </button>
@@ -170,27 +175,26 @@ export default function Dashboard() {
 
       {/* Content */}
       <div style={{ maxWidth: "760px", margin: "0 auto", padding: "48px 24px 80px" }}>
-        {/* Header */}
         <div className="fade-up" style={{ marginBottom: "32px" }}>
           <h1 style={{ fontSize: "32px", fontWeight: 600, marginBottom: "8px", letterSpacing: "-0.03em" }}>
             Tus tareas
           </h1>
           <p className="text-muted" style={{ fontSize: "15px" }}>
-            {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {new Date().toLocaleDateString("es-CO", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </p>
         </div>
 
-        {/* Create task */}
         <CreateTask refresh={fetchTasks} />
 
-        {/* Error */}
         {error && (
           <div
             className="card fade-in mb-4"
-            style={{
-              borderColor: "rgba(239,68,68,0.3)",
-              background: "rgba(239,68,68,0.05)",
-            }}
+            style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.05)" }}
           >
             <p style={{ color: "var(--danger)", fontSize: "14px" }}>{error}</p>
           </div>
@@ -207,49 +211,33 @@ export default function Dashboard() {
               key={f.key}
               onClick={() => setFilter(f.key as typeof filter)}
               className={`badge ${filter === f.key ? "badge-accent" : "badge-muted"}`}
-              style={{
-                padding: "8px 14px",
-                fontSize: "12px",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
+              style={{ padding: "8px 14px", fontSize: "12px", cursor: "pointer", transition: "all 0.2s" }}
             >
               {f.label}
             </button>
           ))}
         </div>
 
-        {/* Loading */}
         {loading ? (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="card shimmer"
-                style={{ height: "72px", opacity: 0.5 }}
-              />
+              <div key={i} className="card shimmer" style={{ height: "72px", opacity: 0.5 }} />
             ))}
           </div>
         ) : filteredTasks.length > 0 ? (
-          <>
-            {/* Task list */}
-            <div className="flex flex-col gap-2">
-              {filteredTasks.map((task, i) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onComplete={handleComplete}
-                  style={{ animationDelay: `${i * 40}ms` }}
-                />
-              ))}
-            </div>
-          </>
+          <div className="flex flex-col gap-2">
+            {filteredTasks.map((task, i) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+                style={{ animationDelay: `${i * 40}ms` }}
+              />
+            ))}
+          </div>
         ) : (
-          /* Empty state */
-          <div
-            className="card fade-up text-center"
-            style={{ padding: "64px 24px", marginTop: "32px" }}
-          >
+          <div className="card fade-up text-center" style={{ padding: "64px 24px", marginTop: "32px" }}>
             <div
               style={{
                 width: "56px",
@@ -264,15 +252,21 @@ export default function Dashboard() {
               }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5">
-                <rect x="3" y="4" width="18" height="18" rx="3"/>
-                <path d="M9 9h6M9 13h6M9 17h2"/>
+                <rect x="3" y="4" width="18" height="18" rx="3" />
+                <path d="M9 9h6M9 13h6M9 17h2" />
               </svg>
             </div>
             <h3 style={{ fontSize: "16px", fontWeight: 500, marginBottom: "6px" }}>
-              {filter === "all" ? "Sin tareas todavía" : `No hay tareas ${filter === "pending" ? "pendientes" : "completadas"}`}
+              {filter === "all"
+                ? "Sin tareas todavía"
+                : `No hay tareas ${filter === "pending" ? "pendientes" : "completadas"}`}
             </h3>
             <p className="text-muted" style={{ fontSize: "14px" }}>
-              {filter === "all" ? "Crea tu primera tarea arriba para comenzar." : filter === "pending" ? "¡Todas completadas! 🎉" : "Completa tareas para verlas aquí."}
+              {filter === "all"
+                ? "Crea tu primera tarea arriba para comenzar."
+                : filter === "pending"
+                ? "¡Todas completadas! 🎉"
+                : "Completa tareas para verlas aquí."}
             </p>
           </div>
         )}
@@ -281,18 +275,20 @@ export default function Dashboard() {
   );
 }
 
-// ─── TaskCard ─────────────────────────────────────────────────────────────────
+// ─── TaskCard ──────────────────────────────────────────────────────────────────
 function TaskCard({
   task,
-  onComplete,
+  onToggle,
+  onDelete,
   style,
 }: {
   task: Task;
-  onComplete?: (id: string) => void;
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
   style?: React.CSSProperties;
 }) {
   const priority = task.priority_id ? PRIORITY_MAP[task.priority_id] : null;
-  const dueDateColor = task.due_date ? getRelativeTimeClass(task.due_date) : undefined;
+  const dueDateColor = task.due_date ? getDateColor(task.due_date) : undefined;
 
   return (
     <div
@@ -303,61 +299,58 @@ function TaskCard({
         alignItems: "flex-start",
         gap: "14px",
         transition: "all 0.2s ease",
-        cursor: task.completed ? "default" : "pointer",
-        ...(task.completed ? { opacity: 0.6 } : {}),
+        ...(task.is_completed ? { opacity: 0.6 } : {}),
         ...style,
       }}
-      onClick={() => !task.completed && onComplete && onComplete(task.id)}
     >
       {/* Checkbox */}
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onComplete && onComplete(task.id);
-        }}
+        onClick={() => onToggle(task.id)}
         style={{
           flexShrink: 0,
+          marginTop: "1px",
           width: "20px",
           height: "20px",
           borderRadius: "6px",
-          border: `1.5px solid ${task.completed ? "var(--success)" : "var(--border-hover)"}`,
-          background: task.completed ? "var(--success-dim)" : "transparent",
+          border: `1.5px solid ${task.is_completed ? "var(--success)" : "var(--border-hover)"}`,
+          background: task.is_completed ? "var(--success-dim)" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
           transition: "all 0.2s ease",
         }}
-        onMouseEnter={(e) => {
-          if (!task.completed) {
-            e.currentTarget.style.borderColor = "var(--accent)";
-            e.currentTarget.style.background = "var(--accent-dim)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!task.completed) {
-            e.currentTarget.style.borderColor = "var(--border-hover)";
-            e.currentTarget.style.background = "transparent";
-          }
-        }}
       >
-        {task.completed && (
+        {task.is_completed && (
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2.5 6L5 8.5L9.5 3.5" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path
+              d="M2.5 6L5 8.5L9.5 3.5"
+              stroke="var(--success)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
       </button>
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+            marginBottom: "4px",
+          }}
+        >
           <h3
             style={{
               fontSize: "14px",
               fontWeight: 500,
-              textDecoration: task.completed ? "line-through" : "none",
-              color: task.completed ? "var(--text-muted)" : "var(--text)",
-              transition: "color 0.2s",
+              textDecoration: task.is_completed ? "line-through" : "none",
+              color: task.is_completed ? "var(--text-muted)" : "var(--text)",
             }}
           >
             {task.title}
@@ -390,20 +383,60 @@ function TaskCard({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: "11px",
-              color: dueDateColor || "var(--text-muted)",
+              color: dueDateColor,
               display: "flex",
               alignItems: "center",
               gap: "6px",
             }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <path d="M16 2v4M8 2v4M3 10h18"/>
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
             {formatDate(task.due_date)}
           </p>
         )}
       </div>
+
+      {/* Delete button */}
+      <button
+        onClick={() => onDelete(task.id)}
+        title="Eliminar tarea"
+        style={{
+          flexShrink: 0,
+          width: "28px",
+          height: "28px",
+          borderRadius: "6px",
+          border: "1px solid transparent",
+          background: "transparent",
+          color: "var(--text-dim)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          opacity: 1,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = "1";
+          e.currentTarget.style.color = "var(--danger)";
+          e.currentTarget.style.background = "var(--danger-dim)";
+          e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = "0";
+          e.currentTarget.style.color = "var(--text-dim)";
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderColor = "transparent";
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="3,6 5,6 21,6" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+          <path d="M9 6V4h6v2" />
+        </svg>
+      </button>
     </div>
   );
 }
