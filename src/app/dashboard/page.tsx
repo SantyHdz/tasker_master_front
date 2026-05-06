@@ -232,28 +232,29 @@ export default function Dashboard() {
             ))}
           </div>
         ) : filteredTasks.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {filteredTasks.map((task, i) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
-                style={{ animationDelay: `${i * 40}ms` }}
-              />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-col gap-2">
+              {filteredTasks.map((task, i) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggle={handleToggle}
+                  onDelete={handleDelete}
+                  style={{ animationDelay: `${i * 40}ms` }}
+                />
+              ))}
+            </div>
 
-          {/* Pagination */}
-          {!loading && totalItems > itemsPerPage && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={Math.ceil(totalItems / itemsPerPage)}
-              onPageChange={setCurrentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-            />
-          )}
+            {totalItems > itemsPerPage && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(totalItems / itemsPerPage)}
+                onPageChange={setCurrentPage}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+              />
+            )}
+          </>
         ) : (
           <div className="card fade-up text-center" style={{ padding: "4rem 1.5rem", marginTop: "2rem" }}>
             <div
