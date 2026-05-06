@@ -49,12 +49,28 @@ export async function register(
   return res.json();
 }
 
-export async function getTasks(token: string): Promise<Task[]> {
-  const res = await fetch(`${API_URL}/tasks`, {
+export interface TasksResponse {
+  tasks: Task[];
+  total: number;
+  pageSize: number;
+}
+
+export async function getTasks(token: string, search?: string, skip?: number, limit?: number): Promise<TasksResponse> {
+  const params = new URLSearchParams();
+  if (search) params.append('search', search);
+  if (skip !== undefined) params.append('skip', skip.toString());
+  if (limit !== undefined) params.append('limit', limit.toString());
+
+  const res = await fetch(`${API_URL}/tasks?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to fetch tasks");
-  return res.json();
+
+  const tasks = await res.json();
+  const total = parseInt(res.headers.get('X-Total-Count') || '0', 10);
+  const pageSize = parseInt(res.headers.get('X-Page-Size') || limit?.toString() || '20', 10);
+
+  return { tasks, total, pageSize };
 }
 
 export async function createTask(token: string, task: TaskInput): Promise<Task> {

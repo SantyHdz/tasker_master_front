@@ -47,29 +47,37 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div
-            className="mx-auto mb-6 w-14 h-14 rounded-xl flex items-center justify-center"
+            className="mx-auto mb-6 fade-up"
             style={{
-              background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
-              boxShadow: "0 0 40px var(--accent-glow)",
+              width: "3.5rem",
+              height: "3.5rem",
+              borderRadius: "var(--radius-lg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%)",
+              boxShadow: "var(--shadow-gold)",
             }}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="5" width="18" height="3" rx="1.5" fill="#0a0a0c"/>
-              <rect x="3" y="10" width="13" height="3" rx="1.5" fill="#0a0a0c"/>
-              <rect x="3" y="15" width="15" height="3" rx="1.5" fill="#0a0a0c"/>
+            <svg width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="3" rx="1.5" fill="var(--text-inverse)"/>
+              <rect x="3" y="10" width="13" height="3" rx="1.5" fill="var(--text-inverse)"/>
+              <rect x="3" y="15" width="15" height="3" rx="1.5" fill="var(--text-inverse)"/>
             </svg>
           </div>
-          <h1 className="text-3xl font-semibold mb-2">Tasker Master</h1>
-          <p className="text-muted text-base">
+          <h1 className="fade-up" style={{ fontSize: "1.875rem", fontWeight: 600, marginBottom: "0.5rem", letterSpacing: "-0.025em", color: "var(--text-primary)" }}>
+            TaskerMaster
+          </h1>
+          <p className="fade-up text-muted" style={{ fontSize: "1rem" }}>
             Gestiona tus tareas con claridad y enfoque
           </p>
         </div>
 
         {/* Card */}
-        <div className="card fade-up" style={{ padding: "36px" }}>
+        <div className="card-elevated fade-up" style={{ padding: "2.25rem" }}>
           <div className="flex flex-col gap-4">
             <div>
-              <label htmlFor="email" className="block text-sm text-muted mb-2">
+              <label htmlFor="email" className="block text-sm text-muted mb-2" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
                 Correo electrónico
               </label>
               <input
@@ -85,7 +93,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm text-muted mb-2">
+              <label htmlFor="password" className="block text-sm text-muted mb-2" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
                 Contraseña
               </label>
               <input
@@ -104,11 +112,11 @@ export default function LoginPage() {
               <div
                 className="fade-in"
                 style={{
-                  fontSize: "13px",
+                  fontSize: "0.8125rem",
                   color: "var(--danger)",
-                  background: "rgba(239,68,68,0.08)",
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-sm)",
+                  background: "var(--danger-dim)",
+                  padding: "0.75rem 0.875rem",
+                  borderRadius: "var(--radius-md)",
                   border: "1px solid rgba(239,68,68,0.2)",
                 }}
               >
@@ -120,11 +128,11 @@ export default function LoginPage() {
               className="btn-primary fade-up"
               onClick={handleLogin}
               disabled={loading}
-              style={{ marginTop: "8px", padding: "14px" }}
+              style={{ marginTop: "0.5rem", padding: "0.875rem" }}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <svg className="animate-spin" style={{ width: "1rem", height: "1rem" }} viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
@@ -136,17 +144,17 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="mt-6 text-center">
+          <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
             <div
               style={{
                 height: "1px",
-                background: "linear-gradient(90deg, transparent, var(--border), transparent)",
-                marginBottom: "16px",
+                background: "linear-gradient(90deg, transparent, var(--border-default), transparent)",
+                marginBottom: "1rem",
               }}
             />
-            <p className="text-sm text-muted">
+            <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>
               ¿No tienes cuenta?{" "}
-              <Link href="/register" className="text-accent hover:underline">
+              <Link href="/register" className="text-accent" style={{ color: "var(--accent-gold)" }}>
                 Regístrate gratis
               </Link>
             </p>
@@ -154,10 +162,10 @@ export default function LoginPage() {
         </div>
 
         {/* Footer text */}
-        <p className="text-center mt-6 text-sm text-dim">
+        <p className="text-center mt-6 text-sm text-dim" style={{ marginTop: "1.5rem", fontSize: "0.875rem", color: "var(--text-tertiary)" }}>
           Al continuar, aceptas nuestros{" "}
-          <a href="#" className="text-muted hover:text-text">Términos</a> y{" "}
-          <a href="#" className="text-muted hover:text-text">Política de Privacidad</a>
+          <Link href="/terminos" className="text-muted" style={{ color: "var(--text-secondary)", transition: "color var(--duration-base) ease" }}>Términos</Link> y{" "}
+          <Link href="/privacidad" className="text-muted" style={{ color: "var(--text-secondary)", transition: "color var(--duration-base) ease" }}>Política de Privacidad</Link>
         </p>
       </div>
     </main>

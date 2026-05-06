@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getTasks, toggleTask, deleteTask, Task } from "@/services/api";
+import { getTasks, toggleTask, deleteTask, Task, TasksResponse } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import CreateTask from "@/components/CreateTask";
+import SearchBar from "@/components/SearchBar";
+import Pagination from "@/components/Pagination";
 import Link from "next/link";
 
 const PRIORITY_MAP: Record<number, { label: string; className: string; color: string }> = {
-  1: { label: "Baja", className: "badge-muted", color: "var(--text-muted)" },
-  2: { label: "Media", className: "badge-warning", color: "#fbbf24" },
+  1: { label: "Baja", className: "badge-muted", color: "var(--text-tertiary)" },
+  2: { label: "Media", className: "badge-warning", color: "var(--warning)" },
   3: { label: "Alta", className: "badge-danger", color: "var(--danger)" },
 };
 
@@ -34,7 +36,7 @@ function getDateColor(date: string) {
   const diff = new Date(date).getTime() - Date.now();
   if (diff < 0) return "var(--danger)";
   if (diff < 86400000) return "var(--warning)";
-  return "var(--text-muted)";
+  return "var(--text-tertiary)";
 }
 
 export default function Dashboard() {
@@ -44,6 +46,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 20;
 
   const fetchTasks = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -51,14 +57,16 @@ export default function Dashboard() {
     setLoading(true);
     setError("");
     try {
-      const data = await getTasks(token);
-      setTasks(data);
+      const skip = (currentPage - 1) * itemsPerPage;
+      const data: TasksResponse = await getTasks(token, searchQuery || undefined, skip, itemsPerPage);
+      setTasks(data.tasks);
+      setTotalItems(data.total);
     } catch {
       setError("No se pudieron cargar las tareas.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchQuery, currentPage, itemsPerPage]);
 
   useEffect(() => {
     fetchTasks();
@@ -104,58 +112,55 @@ export default function Dashboard() {
 
       {/* Header */}
       <header
-        className="sticky top-0 z-50"
+        className="sticky top-0 z-50 glass"
         style={{
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(10,10,12,0.85)",
-          backdropFilter: "blur(20px)",
+          margin: "1rem",
+          borderRadius: "var(--radius-xl)",
         }}
       >
-        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "16px 24px" }}>
+        <div style={{ maxWidth: "56.25rem", margin: "0 auto", padding: "1rem 1.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Link
               href="/dashboard"
-              style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", color: "inherit" }}
+              style={{ display: "flex", alignItems: "center", gap: "0.75rem", textDecoration: "none", color: "inherit" }}
             >
               <div
                 style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "8px",
-                  background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
+                  width: "2rem",
+                  height: "2rem",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-light) 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 0 20px var(--accent-glow)",
+                  boxShadow: "var(--shadow-gold)",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="5" width="18" height="3" rx="1.5" fill="#0a0a0c" />
-                  <rect x="3" y="10" width="13" height="3" rx="1.5" fill="#0a0a0c" />
-                  <rect x="3" y="15" width="15" height="3" rx="1.5" fill="#0a0a0c" />
+                <svg width="1rem" height="1rem" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="5" width="18" height="3" rx="1.5" fill="var(--text-inverse)" />
+                  <rect x="3" y="10" width="13" height="3" rx="1.5" fill="var(--text-inverse)" />
+                  <rect x="3" y="15" width="15" height="3" rx="1.5" fill="var(--text-inverse)" />
                 </svg>
               </div>
-              <span style={{ fontWeight: 600, fontSize: "16px", letterSpacing: "-0.02em" }}>
-                Tasker Master
+              <span style={{ fontWeight: 600, fontSize: "1rem", letterSpacing: "-0.025em", color: "var(--text-primary)" }}>
+                TaskerMaster
               </span>
             </Link>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <div
-                className="flex items-center gap-3"
+                className="flex items-center gap-3 glass"
                 style={{
-                  padding: "8px 14px",
-                  borderRadius: "100px",
-                  background: "var(--bg-card)",
-                  border: "1px solid var(--border)",
+                  padding: "0.5rem 0.875rem",
+                  borderRadius: "var(--radius-full)",
                 }}
               >
-                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                  <strong style={{ color: "var(--accent)" }}>{pending.length}</strong>{" "}
+                <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
+                  <strong style={{ color: "var(--accent-gold)" }}>{pending.length}</strong>{" "}
                   pendiente{pending.length !== 1 ? "s" : ""}
                 </span>
-                <span style={{ width: "1px", height: "14px", background: "var(--border)" }} />
-                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                <span style={{ width: "1px", height: "0.875rem", background: "var(--border-default)" }} />
+                <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                   <strong style={{ color: "var(--success)" }}>{completed.length}</strong>{" "}
                   completada{completed.length !== 1 ? "s" : ""}
                 </span>
@@ -164,7 +169,7 @@ export default function Dashboard() {
               <button
                 className="btn-ghost"
                 onClick={handleLogout}
-                style={{ padding: "8px 14px", fontSize: "13px", border: "1px solid var(--border)" }}
+                style={{ padding: "0.5rem 0.875rem", fontSize: "0.8125rem", border: "1px solid var(--border-default)" }}
               >
                 Salir
               </button>
@@ -174,12 +179,12 @@ export default function Dashboard() {
       </header>
 
       {/* Content */}
-      <div style={{ maxWidth: "760px", margin: "0 auto", padding: "48px 24px 80px" }}>
-        <div className="fade-up" style={{ marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "32px", fontWeight: 600, marginBottom: "8px", letterSpacing: "-0.03em" }}>
+      <div style={{ maxWidth: "47.5rem", margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
+        <div className="fade-up" style={{ marginBottom: "2rem" }}>
+          <h1 style={{ fontSize: "2rem", fontWeight: 600, marginBottom: "0.5rem", letterSpacing: "-0.03em", color: "var(--text-primary)" }}>
             Tus tareas
           </h1>
-          <p className="text-muted" style={{ fontSize: "15px" }}>
+          <p className="text-muted" style={{ fontSize: "0.9375rem" }}>
             {new Date().toLocaleDateString("es-CO", {
               weekday: "long",
               day: "numeric",
@@ -189,14 +194,16 @@ export default function Dashboard() {
           </p>
         </div>
 
+        <SearchBar onSearch={(query) => { setSearchQuery(query); setCurrentPage(1); }} placeholder="Buscar por título o descripción..." />
+
         <CreateTask refresh={fetchTasks} />
 
         {error && (
           <div
-            className="card fade-in mb-4"
-            style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.05)" }}
+            className="card fade-in"
+            style={{ borderColor: "rgba(239,68,68,0.3)", background: "var(--danger-dim)", marginBottom: "1rem" }}
           >
-            <p style={{ color: "var(--danger)", fontSize: "14px" }}>{error}</p>
+            <p style={{ color: "var(--danger)", fontSize: "0.875rem" }}>{error}</p>
           </div>
         )}
 
@@ -209,9 +216,9 @@ export default function Dashboard() {
           ].map((f) => (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key as typeof filter)}
+              onClick={() => { setFilter(f.key as typeof filter); setCurrentPage(1); }}
               className={`badge ${filter === f.key ? "badge-accent" : "badge-muted"}`}
-              style={{ padding: "8px 14px", fontSize: "12px", cursor: "pointer", transition: "all 0.2s" }}
+              style={{ cursor: "pointer", transition: "all var(--duration-base) ease" }}
             >
               {f.label}
             </button>
@@ -221,7 +228,7 @@ export default function Dashboard() {
         {loading ? (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="card shimmer" style={{ height: "72px", opacity: 0.5 }} />
+              <div key={i} className="card shimmer" style={{ height: "4.5rem", opacity: 0.5 }} />
             ))}
           </div>
         ) : filteredTasks.length > 0 ? (
@@ -236,36 +243,47 @@ export default function Dashboard() {
               />
             ))}
           </div>
+
+          {/* Pagination */}
+          {!loading && totalItems > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(totalItems / itemsPerPage)}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+            />
+          )}
         ) : (
-          <div className="card fade-up text-center" style={{ padding: "64px 24px", marginTop: "32px" }}>
+          <div className="card fade-up text-center" style={{ padding: "4rem 1.5rem", marginTop: "2rem" }}>
             <div
               style={{
-                width: "56px",
-                height: "56px",
-                margin: "0 auto 16px",
-                borderRadius: "14px",
-                background: "var(--bg-hover)",
-                border: "1px solid var(--border)",
+                width: "3.5rem",
+                height: "3.5rem",
+                margin: "0 auto 1rem",
+                borderRadius: "var(--radius-lg)",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-default)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5">
+              <svg width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5">
                 <rect x="3" y="4" width="18" height="18" rx="3" />
                 <path d="M9 9h6M9 13h6M9 17h2" />
               </svg>
             </div>
-            <h3 style={{ fontSize: "16px", fontWeight: 500, marginBottom: "6px" }}>
+            <h3 style={{ fontSize: "1rem", fontWeight: 500, marginBottom: "0.375rem", color: "var(--text-primary)" }}>
               {filter === "all"
                 ? "Sin tareas todavía"
                 : `No hay tareas ${filter === "pending" ? "pendientes" : "completadas"}`}
             </h3>
-            <p className="text-muted" style={{ fontSize: "14px" }}>
+            <p className="text-muted" style={{ fontSize: "0.875rem" }}>
               {filter === "all"
                 ? "Crea tu primera tarea arriba para comenzar."
                 : filter === "pending"
-                ? "¡Todas completadas! 🎉"
+                ? "¡Todas completadas!"
                 : "Completa tareas para verlas aquí."}
             </p>
           </div>
@@ -292,13 +310,12 @@ function TaskCard({
 
   return (
     <div
-      className="card fade-up"
+      className="card card-interactive fade-up"
       style={{
-        padding: "18px 20px",
+        padding: "1.125rem 1.25rem",
         display: "flex",
         alignItems: "flex-start",
-        gap: "14px",
-        transition: "all 0.2s ease",
+        gap: "0.875rem",
         ...(task.is_completed ? { opacity: 0.6 } : {}),
         ...style,
       }}
@@ -308,21 +325,21 @@ function TaskCard({
         onClick={() => onToggle(task.id)}
         style={{
           flexShrink: 0,
-          marginTop: "1px",
-          width: "20px",
-          height: "20px",
-          borderRadius: "6px",
+          marginTop: "0.0625rem",
+          width: "1.25rem",
+          height: "1.25rem",
+          borderRadius: "var(--radius-sm)",
           border: `1.5px solid ${task.is_completed ? "var(--success)" : "var(--border-hover)"}`,
           background: task.is_completed ? "var(--success-dim)" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          transition: "all 0.2s ease",
+          transition: "all var(--duration-base) ease",
         }}
       >
         {task.is_completed && (
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <svg width="0.75rem" height="0.75rem" viewBox="0 0 12 12" fill="none">
             <path
               d="M2.5 6L5 8.5L9.5 3.5"
               stroke="var(--success)"
@@ -340,23 +357,23 @@ function TaskCard({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "0.5rem",
             flexWrap: "wrap",
-            marginBottom: "4px",
+            marginBottom: "0.25rem",
           }}
         >
           <h3
             style={{
-              fontSize: "14px",
+              fontSize: "0.875rem",
               fontWeight: 500,
               textDecoration: task.is_completed ? "line-through" : "none",
-              color: task.is_completed ? "var(--text-muted)" : "var(--text)",
+              color: task.is_completed ? "var(--text-secondary)" : "var(--text-primary)",
             }}
           >
             {task.title}
           </h3>
           {priority && (
-            <span className={`badge ${priority.className}`} style={{ fontSize: "10px", padding: "3px 8px" }}>
+            <span className={`badge ${priority.className}`} style={{ fontSize: "0.625rem", padding: "0.1875rem 0.5rem" }}>
               {priority.label}
             </span>
           )}
@@ -365,9 +382,9 @@ function TaskCard({
         {task.description && (
           <p
             style={{
-              fontSize: "13px",
-              color: "var(--text-muted)",
-              marginBottom: "8px",
+              fontSize: "0.8125rem",
+              color: "var(--text-secondary)",
+              marginBottom: "0.5rem",
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
@@ -382,14 +399,14 @@ function TaskCard({
           <p
             style={{
               fontFamily: "var(--font-mono)",
-              fontSize: "11px",
+              fontSize: "0.6875rem",
               color: dueDateColor,
               display: "flex",
               alignItems: "center",
-              gap: "6px",
+              gap: "0.375rem",
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2" />
               <path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
@@ -404,18 +421,18 @@ function TaskCard({
         title="Eliminar tarea"
         style={{
           flexShrink: 0,
-          width: "28px",
-          height: "28px",
-          borderRadius: "6px",
+          width: "1.75rem",
+          height: "1.75rem",
+          borderRadius: "var(--radius-sm)",
           border: "1px solid transparent",
           background: "transparent",
-          color: "var(--text-dim)",
+          color: "var(--text-tertiary)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          transition: "all 0.2s ease",
-          opacity: 1,
+          transition: "all var(--duration-base) ease",
+          opacity: 0,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = "1";
@@ -425,12 +442,12 @@ function TaskCard({
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.opacity = "0";
-          e.currentTarget.style.color = "var(--text-dim)";
+          e.currentTarget.style.color = "var(--text-tertiary)";
           e.currentTarget.style.background = "transparent";
           e.currentTarget.style.borderColor = "transparent";
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="3,6 5,6 21,6" />
           <path d="M19 6l-1 14H6L5 6" />
           <path d="M10 11v6M14 11v6" />
